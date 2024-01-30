@@ -93,6 +93,8 @@ void SetRootDatasetParams(const Options& options, RootDataset::Params* params) {
   }
   params->autotune_ram_budget_from_options =
       options.autotune_options().ram_budget();
+  LOG(INFO) << "@lsf CPU budget: " << params->autotune_cpu_budget_func();
+  LOG(INFO) << "@lsf RAM budget: " << params->autotune_ram_budget_from_options;
   double ram_budget_share;
   if (experiments.contains("autotune_buffer_optimization")) {
     // When running this experiment, increase the ram_budget since it already
