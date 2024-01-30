@@ -357,8 +357,8 @@ inline void UpdateParameterValues(const Node::ParameterGradients& gradients,
 inline void UpdateStateValues(Node::ModelParameters* parameters) {
   for (auto& pair : *parameters) {
     auto& parameter = pair.second;
-    VLOG(2) << "Setting tunable parameter " << pair.first
-            << ":: " << parameter->name << " to " << parameter->value;
+    LOG(INFO) << "Setting tunable parameter " << pair.first
+              << ":: " << parameter->name << " to " << parameter->value;
     mutex_lock l(*parameter->state->mu);
     parameter->state->value = parameter->value;
     parameter->state->cond_var->notify_all();
@@ -2354,6 +2354,10 @@ void Model::Optimize(AutotuneAlgorithm algorithm,
   optimization_params.set_cpu_budget(cpu_budget_func());
   optimization_params.set_ram_budget(model_ram_budget);
   optimization_params.set_model_input_time(model_input_time);
+  LOG(INFO) << "@lsf Optimizing model " << model_id_ << " with algorithm "
+            << AutotuneAlgorithm_Name(algorithm) << " and CPU budget "
+            << optimization_params.cpu_budget() << " and RAM budget "
+            << optimization_params.ram_budget() << " bytes";
   switch (algorithm) {
     case AutotuneAlgorithm::DEFAULT:
     case AutotuneAlgorithm::MAX_PARALLELISM:
@@ -2720,6 +2724,12 @@ void Model::OptimizeHillClimbHelper(
     // Take a hill-climb step
     best_parameter->value++;
   }
+  LOG(INFO) << "@lsf Updating node " << snapshot->DebugString() << " with "
+            << parameters.size() << " parameters.";
+  for (auto& pair : parameters) {
+    LOG(INFO) << "@lsf Going to set " << pair.second->name << " = "
+              << pair.second->value;
+  }
   if (ram_budget_manager.RequestModelAllocation(
           TotalMaximumBufferedBytes(snapshot))) {
     // Note that `ram_budget` is only a snapshot of
@@ -2727,6 +2737,10 @@ void Model::OptimizeHillClimbHelper(
     // that is why we still need to invoke RequestModelAllocation
     // as `ram_budget` might be outdated
     UpdateStateValues(&parameters);
+  } else {
+    LOG(INFO) << "@lsf Not updating model because we cannot allocate "
+              << TotalMaximumBufferedBytes(snapshot) << " bytes.";
+    LOG(INFO) << "@lsf ram_budget_manager " << ram_budget_manager.DebugString();
   }
 }
 void Model::RecordIteratorGapTime(uint64_t duration_usec) {
